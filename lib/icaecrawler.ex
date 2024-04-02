@@ -45,8 +45,21 @@ defmodule Icaecrawler do
     |> Enum.map(fn x ->
       %{
         role: Floki.find(x, ".lead") |> Floki.find("p") |> Floki.text(),
-        rest: Floki.find(x, ".body") |> parse_table_content
+        people: Floki.find(x, ".body") |> parse_table_content
       }
     end)
+  end
+
+  def save_to_json(people) do
+    {:ok, p} = Poison.encode(people)
+    File.write!("people.json", p)
+  end
+
+  def crawl do
+    Icaecrawler.get_body(
+      "https://www.jku.at/institut-fuer-die-gesamtanalyse-der-wirtschaft/ueber-uns/team/"
+    )
+    |> Icaecrawler.parse_item()
+    |> save_to_json()
   end
 end

@@ -7,7 +7,8 @@ defmodule Icaecrawler.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases()
     ]
   end
 
@@ -23,7 +24,17 @@ defmodule Icaecrawler.MixProject do
   defp deps do
     [
       {:floki, "~> 0.33.0"},
-      {:req, "~> 0.4.0"}
+      {:req, "~> 0.4.0"},
+      {:poison, "~> 5.0.0"}
+    ]
+  end
+
+  def releases do
+    [
+      demo: [
+        include_executables_for: [:unix],
+        applications: [runtime_tools: :permanent]
+      ]
     ]
   end
 end
