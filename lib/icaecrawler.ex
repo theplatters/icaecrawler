@@ -1,8 +1,19 @@
 defmodule Icaecrawler do
   @moduledoc """
-  Documentation for `Icaecrawler`.
+  Little crawler to find all the people working at ICAE and store them as JSON
   """
 
+  @doc """
+  Get's the body of a website
+
+  Returns: website body
+
+  ## Examples
+
+      iex> Icaecrawler.get_body()
+      "<html>...</html>"
+
+  """
   def get_body(url) do
     Req.get!(url).body
   end
