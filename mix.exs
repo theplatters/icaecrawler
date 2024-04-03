@@ -25,7 +25,8 @@ defmodule Icaecrawler.MixProject do
     [
       {:floki, "~> 0.33.0"},
       {:req, "~> 0.4.0"},
-      {:poison, "~> 5.0.0"}
+      {:poison, "~> 5.0.0"},
+      {:nimble_csv, "~> 1.2.0"}
     ]
   end
 

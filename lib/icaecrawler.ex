@@ -3,27 +3,22 @@ defmodule Icaecrawler do
   Little crawler to find all the people working at ICAE and store them as JSON
   """
 
-  @doc """
-  Get's the body of a website
+  alias NimbleCSV.RFC4180, as: CSV
 
-  Returns: website body
+  def titles do
+    ["Dr.", "Mag.", "BSc", "MSc", "PD", "Prof.", "MA", "MPhil", "BA"]
+  end
 
-  ## Examples
-
-      iex> Icaecrawler.get_body()
-      "<html>...</html>"
-
-  """
-  def get_body(url) do
+  defp get_body(url) do
     Req.get!(url).body
   end
 
-  def parse_table_content(table) do
+  defp parse_table_content(table) do
     # fitler out the table header
     # get each person
     [_ | contents] =
       Floki.find(table, "tr")
-      # divide person into key characteristics
+      # extract name,link and email
       |> Enum.map(fn x ->
         %{
           email:
@@ -45,7 +40,7 @@ defmodule Icaecrawler do
     contents
   end
 
-  def parse_item(response) do
+  defp parse_response(response) do
     {:ok, document} = Floki.parse_document(response)
 
     Floki.find(document, "#offCanvas")
@@ -61,16 +56,68 @@ defmodule Icaecrawler do
     end)
   end
 
-  def save_to_json(people) do
-    {:ok, p} = Poison.encode(people)
-    File.write!("people.json", p)
+  defp unravel(persons) do
+    persons
+    |> Enum.map(fn outer ->
+      Enum.map(outer.people, fn person -> Map.put(person, :role, outer.role) end)
+    end)
+  end
+
+  defp extract_titles_from_map(persons) do
+    Enum.map(persons, fn person ->
+      {name, titles} =
+        extract_title(
+          person.name
+          |> String.replace("öffnet eine externe URL in einem neuen Fenster", "")
+        )
+
+      Map.update(person, :name, "", fn _ -> name end) |> Map.put(:titles, titles)
+    end)
+  end
+
+  defp extract_title(person) do
+    titles = extract_titles_from_list(person, Icaecrawler.titles(), [])
+
+    {remove_titles_from_name(person, titles) |> String.replace(",", "") |> String.trim(),
+     titles |> Enum.join(" ")}
+  end
+
+  defp extract_titles_from_list(_, [], extracted_titles), do: extracted_titles
+
+  defp extract_titles_from_list(name, [title | rest], extracted_titles) do
+    if String.contains?(name, title) do
+      extract_titles_from_list(name, rest, [title | extracted_titles])
+    else
+      extract_titles_from_list(name, rest, extracted_titles)
+    end
+  end
+
+  defp remove_titles_from_name(name, []), do: name
+
+  defp remove_titles_from_name(name, [title | rest]) do
+    remove_titles_from_name(String.replace(name, title, ""), rest)
+  end
+
+  def save_to_csv(persons) do
+    csv_data =
+      [
+        ["Name", "Stelle", "Email", "Link", "Titel"]
+        | Enum.map(persons, &Map.values/1)
+      ]
+      |> CSV.dump_to_iodata()
+      |> IO.iodata_to_binary()
+
+    File.write(
+      "people.csv",
+      csv_data
+    )
   end
 
   def crawl do
-    Icaecrawler.get_body(
-      "https://www.jku.at/institut-fuer-die-gesamtanalyse-der-wirtschaft/ueber-uns/team/"
-    )
-    |> Icaecrawler.parse_item()
-    |> save_to_json()
+    get_body("https://www.jku.at/institut-fuer-die-gesamtanalyse-der-wirtschaft/ueber-uns/team/")
+    |> parse_response()
+    |> unravel()
+    |> List.flatten()
+    |> extract_titles_from_map()
   end
 end
